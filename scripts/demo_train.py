@@ -79,8 +79,8 @@ env = make_vec_env(make_env, n_envs=1)
 # verbose=1 means it will print training progress
 model = PPO("MlpPolicy", env, verbose=1)
 
-# Train the model for 1000 timesteps
-model.learn(total_timesteps=1000)
+# Train the model for certain timesteps
+model.learn(total_timesteps=50000)
 
 # =========================================================
 # 5. Inference (using the trained model)

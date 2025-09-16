@@ -88,7 +88,7 @@ class TDEnv(gym.Env):
         """
         # If the selected item was already chosen → small penalty and terminate
         if self.selected[action] == 1:
-            return self._obs(), -0.1, True, False, {}
+            return self._obs(), -2.0, True, False, {}
 
         # Otherwise mark the item as selected
         self.selected[action] = 1
