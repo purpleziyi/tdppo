@@ -88,7 +88,8 @@ class TDEnv(gym.Env):
         """
         # If the selected item was already chosen → small penalty and terminate
         if self.selected[action] == 1:
-            return self._obs(), -2.0, True, False, {}
+            # already selected → penalty + terminate
+            return self._obs(), -2.0, True, False, {}   # return self._obs(), -2.0, terminated=True, truncated=False, {}
 
         # Otherwise mark the item as selected
         self.selected[action] = 1
@@ -97,7 +98,7 @@ class TDEnv(gym.Env):
         # Compute reward depending on mode("theory"/"practice")
         if self.mode == "theory":
             reward = self.meta["theory_score"][action]  # Use theory score
-        else:
+        else:   # practice
             dev_rank = self.meta["dev_rank"].get(action, None)
             reward = 1.0 / dev_rank if dev_rank is not None else -0.01
 

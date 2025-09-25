@@ -14,7 +14,7 @@ def map_severity(severity_series: pd.Series) -> np.ndarray:
     Returns:
         np.ndarray: Numeric array corresponding to severity values.
     """
-    mapping = {"blocker": 16, "high": 8, "medium": 4, "low": 2, "info": 1}
+    mapping = {"blocker": 11, "high": 7, "medium": 4, "low": 2, "info": 1}
     return severity_series.str.lower().map(mapping).fillna(1).to_numpy()
 
 def normalize(values:pd.Series) -> np.ndarray:
@@ -70,8 +70,11 @@ def featurize(issues_df: pd.DataFrame, mode="theory") -> np.ndarray:
         sev = map_severity(issues_df["severity"])
         # Normalize effort estimates
         eff = normalize(issues_df["effort_minutes"])
+        # Normalize age (days since creation)
+        age = normalize(issues_df["age_days"])
         features.append(sev.reshape(-1, 1))
         features.append(eff.reshape(-1, 1))
+        features.append(age.reshape(-1, 1))
     else:
         # Normalize issue age (days since creation)
         age = normalize(issues_df["age_days"])
@@ -95,11 +98,11 @@ def build_dev_rank_map(issues_df: pd.DataFrame):
     Returns:
         dict: Mapping {issue_index: developer_rank}.
     """
-    fixed = issues_df.dropna(subset=["closed_at"]).copy()
-    fixed = fixed.sort_values("closed_at")
+    fixed = issues_df.dropna(subset=["closed_at"]).copy()   # 只保留已经被修复（有关闭时间）的 issue
+    fixed = fixed.sort_values("closed_at")   # 按照修复时间从早到晚排序
     rank_map = {}
-    for rank, idx in enumerate(fixed.index, start=1):
+    for rank, idx in enumerate(fixed.index, start=1):    # 给最早修复的 issue rank=1，下一个 rank=2，依此类推
         rank_map[idx] = rank
-    return rank_map
+    return rank_map    # {行索引: 开发者修复顺序}
 
 
