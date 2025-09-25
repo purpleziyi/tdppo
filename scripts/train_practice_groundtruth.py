@@ -2,7 +2,7 @@ import pandas as pd
 from tdppo.datasets import load_github_issues, build_monthly_snapshots
 
 # 1. Load GitHub issues (example repo: aws)
-df = load_github_issues("aws/aws-sdk-java-v2", max_issues=500)
+df = load_github_issues("aws/aws-sdk-java-v2", max_issues=600)
 
 # 2. Build monthly snapshots
 snapshots = build_monthly_snapshots(df)

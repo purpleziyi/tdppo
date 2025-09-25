@@ -56,7 +56,7 @@ def load_github_issues(repo: str, max_issues: int = 1000) -> pd.DataFrame:
             # labels_joined = ";".join(label_names)
 
             all_issues.append({
-                "issue_id": issue.get("id"),
+                "issue_id": issue.get("number"),
                 "title": issue.get("title", ""),
                 "labels": ";".join([l.get("name", "") for l in issue.get("labels", [])]),
                 "state": issue.get("state", ""),

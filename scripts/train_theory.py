@@ -55,7 +55,7 @@ for month, issues_df in snapshots.items():
     model = PPO("MlpPolicy", env, verbose=1, device="cuda")
     model.learn(total_timesteps=15000)
 
-    model.save(f"models/theory_ppo_{month.strftime('%Y%m')}")
+    # model.save(f"models/theory_ppo_{month.strftime('%Y%m')}")
 
     # 6. Evaluate
     obs = env.reset()
