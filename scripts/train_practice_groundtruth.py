@@ -31,7 +31,7 @@ for month, issues_df in snapshots.items():
     closed["rank"] = range(1, len(closed) + 1)
 
     # Pick the first K issues
-    top_issues = closed.head(top_k)[["issue_id", "created_at", "closed_at", "rank"]]
+    top_issues = closed.head(top_k)[["issue_id", "created_at", "closed_at", "labels", "rank"]]
 
     print(f"\nSnapshot {month}: Ground truth Top-{top_k}")
     print(top_issues.to_string(index=False))
