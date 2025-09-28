@@ -12,6 +12,7 @@ df = load_sonarcloud_issues("aws_aws-sdk-java-v2", max_issues=1500)
 snapshots = build_monthly_snapshots_sonar(df)
 
 # 2. Iterate all the month in the snapshots
+all_results = []
 for month, issues_df in snapshots.items():
     if issues_df.empty:
         print(f"Skipping snapshot {month} (no issues)")
@@ -75,10 +76,27 @@ for month, issues_df in snapshots.items():
 
         picked.add(a0)
         r0 = float(meta["theory_score"][a0])
-        actions.append((meta["issue_ids"][a0], r0))
+        # actions.append((meta["issue_ids"][a0], r0))
+        issue_id = meta["issue_ids"][a0]
+        actions.append({
+            "snapshot": month,
+            "issue_id": issue_id,
+            "reward": r0,
+            "severity": issues_df.loc[issues_df["issue_id"] == issue_id, "severity"].values[0],
+            "effort_minutes": issues_df.loc[issues_df["issue_id"] == issue_id, "effort_minutes"].values[0],
+            "created_at":issues_df.loc[issues_df["issue_id"] == issue_id, "created_at"].values[0],
+        })
 
         # 不 break，即使环境 done 也继续
         obs, _, _, _ = env.step([a0])  # 保持 obs 更新，但忽略 reward/done
 
-    actions_sorted = sorted(actions, key=lambda x: x[1], reverse=True)
+    # actions_sorted = sorted(actions, key=lambda x: x[1], reverse=
+    actions_sorted = sorted(actions, key=lambda x: x["reward"], reverse=True)
     print(f"Snapshot {month}: Top-{max_recommend} → {actions_sorted}")
+    all_results.extend(actions_sorted)
+
+# 7. Save all_results to CSV
+if all_results:
+    result_df = pd.DataFrame(all_results)
+    result_df.to_csv("theory.csv", index=False)
+    print("\n Saved theory rankings to theory.csv")
