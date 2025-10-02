@@ -25,8 +25,6 @@ for month, issues_df in snapshots.items():
 
     severity_score = map_severity(issues_df["severity"])   # Map severity levels to numeric scores
     effort_score = normalize(issues_df["effort_minutes"])   # Normalize effort estimates (lower effort → higher reward)
-    # age_days = issues_df["age_days"].fillna(0).to_numpy()   # Age of technical debt in days (older debt → higher interest)
-    # age_score = log1p(age_days)    # Use log1p to avoid extreme values (e.g., log(1+age_days))
 
     # age (days) → use NumPy's vectorized log1p on a numeric ndarray
     age_days = pd.to_numeric(issues_df["age_days"], errors="coerce").fillna(0).to_numpy()
@@ -44,17 +42,17 @@ for month, issues_df in snapshots.items():
     meta = {"theory_score": theory_score, "issue_ids": issues_df["issue_id"].tolist()}
 
     # 4. Build environment
-    max_recommend = 5  # 10?
+    max_recommend = 5  # 10
     def make_env():
         return TDEnv(X, meta, mode="theory", max_select=max_recommend)
 
     env = make_vec_env(make_env, n_envs=1)
 
-    # 5. Train PPO
+    # 5. Train PPO with logger
     # Initialize PPO model with a simple Multi-Layer Perceptron (MLP) policy
     # verbose=1 means it will print training progress
     model = PPO("MlpPolicy", env, verbose=1, device="cuda")
-    model.learn(total_timesteps=15000)
+    model.learn(total_timesteps=5000)
 
     # model.save(f"models/theory_ppo_{month.strftime('%Y%m')}")
 
