@@ -18,7 +18,7 @@ snapshots = build_monthly_snapshots_sonar(df)
 all_results = []
 
 # directory for SB3 logs
-log_dir = "logs/"  # put logger into scripts/train_theory/logs
+log_dir = "logs/"  # put logger into scripts/logs
 new_logger = configure(log_dir, ["stdout", "csv"])   # 输出到终端和 CSV(progress.csv)
 
 for month, issues_df in snapshots.items():
@@ -59,7 +59,7 @@ for month, issues_df in snapshots.items():
     # -------------------------
     model = PPO("MlpPolicy", env, verbose=1, device="cuda")
     model.set_logger(new_logger)
-    model.learn(total_timesteps=15000)  # 5000 , 15000 , 50000
+    model.learn(total_timesteps=5000)  # 5000 , 15000 , 50000
 
     # -------------------------
     # 5. Evaluate after training
