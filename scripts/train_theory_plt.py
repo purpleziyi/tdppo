@@ -12,13 +12,13 @@ from stable_baselines3.common.logger import configure
 # -------------------------
 # 1. Load SonarQube issues
 # -------------------------
-df = load_sonarcloud_issues("aws_aws-sdk-java-v2", max_issues=1500)
+df = load_sonarcloud_issues("aws_aws-sdk-java-v2", max_issues=4000)
 snapshots = build_monthly_snapshots_sonar(df)
 
 all_results = []
 
 # directory for SB3 logs
-log_dir = "logs/"  # put logger into scripts/logs
+log_dir = "logs_tms_aws/"  # put logger into scripts/logs
 new_logger = configure(log_dir, ["stdout", "csv"])   # 输出到终端和 CSV(progress.csv)
 
 for month, issues_df in snapshots.items():
@@ -40,15 +40,15 @@ for month, issues_df in snapshots.items():
 
     alpha = 2.0
     beta = 0.1
-
-    theory_score = severity_score - alpha * effort_score + beta * age_score
+    # theory_score = severity_score - alpha * effort_score + beta * age_score
+    theory_score = severity_score - alpha * effort_score   # remove age_score
 
     meta = {"theory_score": theory_score, "issue_ids": issues_df["issue_id"].tolist()}
 
     # -------------------------
     # 3. Build environment
     # -------------------------
-    max_recommend = 5
+    max_recommend = 5   # top-5
     def make_env():
         return TDEnv(X,meta,mode="theory",max_select=max_recommend)
 
@@ -59,7 +59,7 @@ for month, issues_df in snapshots.items():
     # -------------------------
     model = PPO("MlpPolicy", env, verbose=1, device="cuda")
     model.set_logger(new_logger)
-    model.learn(total_timesteps=5000)  # 5000 , 15000 , 50000
+    model.learn(total_timesteps=50000)  # 5000 , 15000 , 50000
 
     # -------------------------
     # 5. Evaluate after training
@@ -118,12 +118,16 @@ try:
 
         df_rewards.to_csv("reward_curve.csv", index=False)
 
-        plt.figure()
-        plt.plot(df_rewards["timesteps"], df_rewards["mean_reward"], label="Reward curve")
-        plt.xlabel("Timesteps")
-        plt.ylabel("Mean Episode Reward")
-        plt.legend()
-        plt.savefig("reward_curve.png")
+        plt.figure(figsize=(12, 10))
+        plt.plot(df_rewards["timesteps"], df_rewards["mean_reward"],
+                 label="Reward curve",
+                 linewidth=0.8,  # 线条更细
+                 alpha=0.6,  # 半透明，减少重叠感
+                 color="royalblue")  # 蓝色线条可读性好
+        plt.xlabel("Timesteps", fontsize=12)
+        plt.ylabel("Mean Episode Reward", fontsize=12)
+        plt.legend(loc="upper left")
+        plt.savefig("reward_curve.png", dpi=300)
         print("Saved reward curve to reward_curve.png")
     else:
         print("⚠️ progress.csv did not contain 'rollout/ep_rew_mean'")

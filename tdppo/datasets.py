@@ -5,7 +5,7 @@ import numpy as np
 # ------------------------
 # GitHub Issues Loader
 # ------------------------
-def load_github_issues(repo: str, max_issues: int = 1000) -> pd.DataFrame:
+def load_github_issues(repo: str, max_issues: int = 2000) -> pd.DataFrame:
     """
     Fetch issues from GitHub API with pagination.
 
@@ -41,20 +41,6 @@ def load_github_issues(repo: str, max_issues: int = 1000) -> pd.DataFrame:
             if "pull_request" in issue:  # skip PRs
                 continue
 
-            # labels_field = issue.get("labels", [])
-            # label_names = []
-            # # Case 1: when labels is a list
-            # if isinstance(labels_field, list):
-            #     for lbl in labels_field:
-            #         if isinstance(lbl, dict):
-            #             name = lbl.get("name")
-            #             if name:
-            #                 label_names.append(name)
-            # # Case 2: when labels is string
-            # elif isinstance(labels_field, str):
-            #     label_names.append(labels_field)
-            # labels_joined = ";".join(label_names)
-
             all_issues.append({
                 "issue_id": issue.get("number"),
                 "title": issue.get("title", ""),
@@ -83,7 +69,7 @@ def load_sonarcloud_issues(project_key: str, max_issues: int = 2000, status: str
     Args:
         project_key (str): SonarCloud project key, e.g., "aws_aws-sdk-java-v2".
         max_issues (int): Maximum number of issues to fetch (default=2000).
-        status (str): Issue status to fetch, default "OPEN".
+        status (str): Issue status to fetch, e.g., "OPEN" or "CLOSED".
 
     Returns:
         pd.DataFrame: Issues dataframe with standardized columns.
@@ -133,7 +119,7 @@ def load_sonarcloud_issues(project_key: str, max_issues: int = 2000, status: str
                 "labels": ";".join(issue.get("tags", [])),
                 "state": status.lower(),
                 "created_at": issue.get("creationDate"),
-                "closed_at": None,  # SonarCloud "OPEN" issues usually no closed date
+                "closed_at": issue.get("closeDate") if status == "CLOSED" else None,
                 "severity": (impact_severity or issue.get("severity", "info")),
                 "effort_minutes": minutes,
                 "text": issue.get("message", ""),
@@ -212,6 +198,36 @@ def build_monthly_snapshots_sonar(issues_df: pd.DataFrame):
     while month <= end_date:
         # backlog = 截止到该月一号之前创建的所有 issue
         mask = df["created_at"] < month
+        snapshots[month] = df.loc[mask].copy()
+        month = month + pd.offsets.MonthBegin(1)
+
+    return snapshots
+
+# -------------------------------
+# Monthly Snapshots (Closed Issues)
+# -------------------------------
+def build_monthly_closed_snapshots_sonar(issues_df: pd.DataFrame):
+    """
+    Build monthly snapshots for CLOSED SonarQube issues.
+    Each month contains issues that were closed before that month.
+
+    Args:
+        issues_df (pd.DataFrame): Must contain "closed_at" column.
+
+    Returns:
+        dict: {month_start_date (pd.Timestamp): DataFrame of closed issues before that month}
+    """
+    df = issues_df.copy()
+    df["closed_at"] = pd.to_datetime(df["closed_at"], utc=True)
+
+    start_date = df["closed_at"].min().to_period("M").to_timestamp().tz_localize("UTC")
+    end_date = df["closed_at"].max().to_period("M").to_timestamp().tz_localize("UTC")
+
+    snapshots = {}
+    month = start_date
+
+    while month <= end_date:
+        mask = df["closed_at"] < month
         snapshots[month] = df.loc[mask].copy()
         month = month + pd.offsets.MonthBegin(1)
 

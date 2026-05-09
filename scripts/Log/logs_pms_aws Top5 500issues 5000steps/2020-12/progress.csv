@@ -1,0 +1,4 @@
+rollout/ep_rew_mean,time/fps,time/iterations,rollout/ep_len_mean,time/time_elapsed,time/total_timesteps,train/clip_range,train/entropy_loss,train/policy_gradient_loss,train/explained_variance,train/learning_rate,train/value_loss,train/approx_kl,train/n_updates,train/loss,train/clip_fraction
+-0.8010999999999998,875,1,4.49,2,2048,,,,,,,,,,
+-1.0204,623,2,4.53,6,4096,0.2,-2.933470393717289,-0.013601767434738576,-0.021489858627319336,0.0003,0.7661175861954689,0.013841644,10,0.36491668224334717,0.084765625
+-0.7823,566,3,4.6,10,6144,0.2,-2.9286056466400625,-0.013765239337226376,0.00643390417098999,0.0003,0.7316167406737805,0.0087656565,20,0.44150784611701965,0.061279296875

@@ -14,7 +14,9 @@ def map_severity(severity_series: pd.Series) -> np.ndarray:
     Returns:
         np.ndarray: Numeric array corresponding to severity values.
     """
-    mapping = {"blocker": 11, "high": 7, "medium": 4, "low": 2, "info": 1}
+    # mapping = {"blocker": 11, "high": 7, "medium": 4, "low": 2, "info": 1}
+    mapping = {"blocker": 16, "high": 8, "medium": 4, "low": 2, "info": 1}
+
     return severity_series.str.lower().map(mapping).fillna(1).to_numpy()
 
 def normalize(values:pd.Series) -> np.ndarray:
@@ -83,9 +85,9 @@ def featurize(issues_df: pd.DataFrame, mode="theory") -> np.ndarray:
     return np.hstack(features)
 
 
-def build_dev_rank_map(issues_df: pd.DataFrame):
+def build_dev_rank_map(issues_df: pd.DataFrame, month: pd.Timestamp) -> dict:
     """
-    Construct a developer ranking map based on issue fixing order.
+    Construct a month-specific developer ranking map based on issue fixing order.
 
     Logic:
         - Only considers issues that have a non-null "closed_at" timestamp.
@@ -93,16 +95,37 @@ def build_dev_rank_map(issues_df: pd.DataFrame):
         - Assigns ranks incrementally (1 = earliest fixed issue).
 
     Args:
-        issues_df (pd.DataFrame): DataFrame containing at least "closed_at" column.
+        issues_df (pd.DataFrame): DataFrame containing at least "closed_at" column.(index already reset).
+        month (pd.Timestamp): Start timestamp of the month.
 
     Returns:
         dict: Mapping {issue_index: developer_rank}.
     """
-    fixed = issues_df.dropna(subset=["closed_at"]).copy()   # 只保留已经被修复（有关闭时间）的 issue
-    fixed = fixed.sort_values("closed_at")   # 按照修复时间从早到晚排序
-    rank_map = {}
-    for rank, idx in enumerate(fixed.index, start=1):    # 给最早修复的 issue rank=1，下一个 rank=2，依此类推
-        rank_map[idx] = rank
-    return rank_map    # {行索引: 开发者修复顺序}
+
+    # fixed = issues_df.dropna(subset=["closed_at"]).copy()   # 只保留已经被修复（有关闭时间）的 issue
+    # fixed = fixed.sort_values("closed_at")   # 按照修复时间从早到晚排序
+    # rank_map = {}
+    # for rank, idx in enumerate(fixed.index, start=1):    # 给最早修复的 issue rank=1，下一个 rank=2，依此类推
+    #     rank_map[idx] = rank
+    # return rank_map    # {行索引: 开发者修复顺序}
+
+    month_start = month
+    month_end = month + pd.offsets.MonthBegin(1)
+
+    closed = issues_df.dropna(subset=["closed_at"]).copy()
+    closed["closed_at"] = pd.to_datetime(closed["closed_at"], utc=True)
+
+    closed_in_month = closed[
+        (closed["closed_at"] >= month_start) &
+        (closed["closed_at"] < month_end)
+        ].sort_values("closed_at")
+
+    # 将“当月关闭”的行索引映射到 1..N 的 rank（用于奖励）（注意：此时 issues_df 已 reset_index）
+    rank_map = {
+        idx: rank
+        for rank, idx in enumerate(closed_in_month.index, start=1)
+    }
+
+    return rank_map
 
 

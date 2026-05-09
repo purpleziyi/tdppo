@@ -15,10 +15,10 @@ from stable_baselines3.common.logger import configure
 # 0) Config
 # -------------------------
 REPO = "aws/aws-sdk-java-v2"
-MAX_ISSUES = 600
-TOTAL_TIMESTEPS = 5000          # 可改为 5000 / 15000 / 50000 做对比
+MAX_ISSUES = 2000               # 12.27改为2000，之前是600，不适合closed issues数量！
+TOTAL_TIMESTEPS = 50000          # 可改为 5000 / 15000 / 50000 做对比
 MAX_RECOMMEND = 5                # 每月输出前K条推荐
-BASE_LOG_DIR = "logs_practice"   # 每月单独子目录，避免 progress.csv 被覆盖
+BASE_LOG_DIR = "logs_pmb"   # 曾经是"logs_practice"，每月单独子目录，避免 progress.csv 被覆盖
 
 os.makedirs(BASE_LOG_DIR, exist_ok=True)
 
@@ -41,7 +41,7 @@ for month, issues_df in snapshots.items():
     print(f"\n[Practice-RL] Training on snapshot {month}, backlog size={len(issues_df)}")
 
     # -------------------------
-    # 2) Build practice reward (month-specific rank)
+    # 2) Build practice reward (month-specific rank)  或替换为 dev_rank_map = build_dev_rank_map(issues_df, month)
     #    当月关闭的 issues：rank=1..N → reward=1/rank
     #    非当月关闭：reward 使用环境中的小负值（-0.01）
     # -------------------------
@@ -161,8 +161,8 @@ for month, issues_df in snapshots.items():
 # -------------------------
 if all_rows:
     out_df = pd.DataFrame(all_rows)
-    out_df.to_csv("practice.csv", index=False)
-    print("\nSaved practice rankings to practice.csv")
+    out_df.to_csv("pmb.csv", index=False)
+    print("\nSaved practice rankings to pmb.csv")
 else:
     print("\nNo practice results to save (all snapshots were empty or skipped).")
 
@@ -171,7 +171,7 @@ else:
 # -------------------------
 if agg_reward_frames:
     curve_df = pd.concat(agg_reward_frames, ignore_index=True)
-    curve_df.to_csv("reward_curve_practice.csv", index=False)
+    curve_df.to_csv("reward_curve_pmb.csv", index=False)
 
     # 画多条曲线（按月份区分）
     plt.figure(figsize=(8,5))
@@ -185,8 +185,8 @@ if agg_reward_frames:
     # 图例放在右侧外部，不遮挡线条
     plt.legend(bbox_to_anchor=(1.02, 1), loc="upper left", borderaxespad=0, fontsize=8)
     plt.tight_layout()  # 自动调整边距，防止被裁剪
-    plt.savefig("reward_curve_practice.png")
-    print("Saved practice reward curve to reward_curve_practice.png")
+    plt.savefig("reward_curve_pmb.png")
+    print("Saved practice reward curve to reward_curve_pmb.png")
 else:
     print("No reward curves to aggregate (no progress.csv found).")
 
