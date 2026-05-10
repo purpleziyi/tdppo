@@ -15,7 +15,7 @@ from stable_baselines3.common.logger import configure
 # 0) Config
 # -------------------------
 REPO = "aws/aws-sdk-java-v2"
-MAX_ISSUES = 2000               # 12.27改为2000，之前是600，不适合closed issues数量！
+MAX_ISSUES = 2000               # 12.27改为2000，之前是600，不适合closed issues数量
 TOTAL_TIMESTEPS = 50000          # 可改为 5000 / 15000 / 50000 做对比
 MAX_RECOMMEND = 5                # 每月输出前K条推荐
 BASE_LOG_DIR = "logs_pmb"   # 曾经是"logs_practice"，每月单独子目录，避免 progress.csv 被覆盖
