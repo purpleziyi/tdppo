@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 
 # =========================================================
-# 0) Config
+# 0) Configuration
 # =========================================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -25,20 +25,21 @@ PMS_CSV = os.path.join(
 
 OUT_DIR = os.path.join(BASE_DIR, "tms_pms_distribution_outputs")
 
-# 去重策略：
-# TMS: 同一 issue_id 保留 reward 最高的一条
-# PMS: 同一 issue_id 保留 reward_practice 最高的一条
+# Deduplication strategy:
+# TMS: keep the row with the highest theoretical reward for each issue_id
+# PMS: keep the row with the highest practical reward for each issue_id
 DEDUP_THEORY_BY_MAX_REWARD = True
 DEDUP_PMS_BY_MAX_REWARD = True
 
-# severity 顺序（统一成小写后统计）
+# Severity order used for normalized counting and plotting
 SEVERITY_ORDER = ["info", "low", "medium", "high", "blocker"]
 
-# effort 分箱
+# Effort bins (in minutes) used for grouped distribution analysis
 EFFORT_BINS = [-0.1, 0, 5, 10, 30, 60, np.inf]
 EFFORT_LABELS = ["0", "1-5", "6-10", "11-30", "31-60", ">60"]
 
-# 是否额外生成 issue age 图
+# Whether to additionally generate the issue-age boxplot
+# This plot is optional and was not used in the thesis text.
 PLOT_AGE_DISTRIBUTION = True
 
 
@@ -46,16 +47,19 @@ PLOT_AGE_DISTRIBUTION = True
 # 1) Helper functions
 # =========================================================
 def ensure_out_dir(path: str):
+    """Create the output directory if it does not already exist."""
     os.makedirs(path, exist_ok=True)
 
 
 def load_csv(path: str) -> pd.DataFrame:
+    """Load a CSV file and raise an explicit error if the file is missing."""
     if not os.path.exists(path):
         raise FileNotFoundError(f"File not found: {path}")
     return pd.read_csv(path)
 
 
 def parse_datetime_cols(df: pd.DataFrame, cols):
+    """Parse selected columns as UTC datetimes where available."""
     for c in cols:
         if c in df.columns:
             df[c] = pd.to_datetime(df[c], utc=True, errors="coerce")
@@ -80,6 +84,10 @@ def normalize_severity(series: pd.Series) -> pd.Series:
 
 
 def map_severity_weight(series: pd.Series) -> pd.Series:
+    """
+    Map normalized severity labels to numeric weights.
+    These weights follow the theoretical reward design used in TMS.
+    """
     mapping = {
         "blocker": 16,
         "high": 8,
@@ -91,6 +99,9 @@ def map_severity_weight(series: pd.Series) -> pd.Series:
 
 
 def add_effort_bin(df: pd.DataFrame, effort_col: str = "effort_minutes") -> pd.DataFrame:
+    """
+    Group effort values into coarse bins for distributional comparison.
+    """
     out = df.copy()
     out[effort_col] = pd.to_numeric(out[effort_col], errors="coerce")
     out["effort_bin"] = pd.cut(
@@ -119,6 +130,12 @@ def add_age_days(df: pd.DataFrame, created_col: str = "created_at", snapshot_col
 
 
 def deduplicate_theory(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Deduplicate TMS outputs at the issue level.
+
+    If enabled, keep the row with the highest theoretical reward
+    for each unique issue_id.
+    """
     out = df.copy()
 
     if "issue_id" not in out.columns:
@@ -138,6 +155,12 @@ def deduplicate_theory(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def deduplicate_pms(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Deduplicate PMS outputs at the issue level.
+
+    If enabled, keep the row with the highest practical reward
+    for each unique issue_id.
+    """
     out = df.copy()
 
     if "issue_id" not in out.columns:
@@ -157,6 +180,10 @@ def deduplicate_pms(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_severity_summary(tms_df: pd.DataFrame, pms_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Build a comparative severity summary for deduplicated TMS and PMS outputs.
+    Both counts and proportions are computed.
+    """
     tms_counts = normalize_severity(tms_df["severity"]).value_counts().reindex(SEVERITY_ORDER, fill_value=0)
     pms_counts = normalize_severity(pms_df["severity"]).value_counts().reindex(SEVERITY_ORDER, fill_value=0)
 
@@ -174,6 +201,9 @@ def build_severity_summary(tms_df: pd.DataFrame, pms_df: pd.DataFrame) -> pd.Dat
 
 
 def build_effort_bin_summary(tms_df: pd.DataFrame, pms_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Build a comparative effort-bin summary for deduplicated TMS and PMS outputs.
+    """
     tms_tmp = add_effort_bin(tms_df)
     pms_tmp = add_effort_bin(pms_df)
 
@@ -194,6 +224,9 @@ def build_effort_bin_summary(tms_df: pd.DataFrame, pms_df: pd.DataFrame) -> pd.D
 
 
 def build_numeric_summary(tms_df: pd.DataFrame, pms_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Compute compact descriptive statistics used in the thesis summary table.
+    """
     tms_eff = pd.to_numeric(tms_df["effort_minutes"], errors="coerce")
     pms_eff = pd.to_numeric(pms_df["effort_minutes"], errors="coerce")
 
@@ -238,6 +271,9 @@ def build_numeric_summary(tms_df: pd.DataFrame, pms_df: pd.DataFrame) -> pd.Data
 def plot_grouped_bar(summary_df: pd.DataFrame, x_col: str, y1_col: str, y2_col: str,
                      y_label: str, title: str, out_path: str,
                      label1: str = "TMS", label2: str = "PMS"):
+    """
+    Generate a grouped bar chart for TMS vs PMS distributions.
+    """
     x_labels = summary_df[x_col].tolist()
     x = np.arange(len(x_labels))
     width = 0.35
@@ -250,35 +286,6 @@ def plot_grouped_bar(summary_df: pd.DataFrame, x_col: str, y1_col: str, y2_col: 
     plt.ylabel(y_label)
     plt.title(title)
     plt.legend()
-    plt.tight_layout()
-    plt.savefig(out_path, dpi=300)
-    plt.close()
-
-
-def plot_effort_boxplot(tms_df: pd.DataFrame, pms_df: pd.DataFrame, out_path: str):
-    tms_eff = pd.to_numeric(tms_df["effort_minutes"], errors="coerce").dropna()
-    pms_eff = pd.to_numeric(pms_df["effort_minutes"], errors="coerce").dropna()
-
-    plt.figure(figsize=(7, 5))
-    plt.boxplot([tms_eff, pms_eff], labels=["TMS", "PMS"])
-    plt.ylabel("Effort (minutes)")
-    plt.title("Effort Distribution: TMS vs PMS")
-    plt.tight_layout()
-    plt.savefig(out_path, dpi=300)
-    plt.close()
-
-
-def plot_age_boxplot(tms_df: pd.DataFrame, pms_df: pd.DataFrame, out_path: str):
-    tms_age = pd.to_numeric(tms_df["age_days_at_selection"], errors="coerce").dropna()
-    pms_age = pd.to_numeric(pms_df["age_days_at_selection"], errors="coerce").dropna()
-
-    if len(tms_age) == 0 or len(pms_age) == 0:
-        return
-
-    plt.figure(figsize=(7, 5))
-    plt.boxplot([tms_age, pms_age], labels=["TMS", "PMS"])
-    plt.ylabel("Age at selection (days)")
-    plt.title("Issue Age at Selection: TMS vs PMS")
     plt.tight_layout()
     plt.savefig(out_path, dpi=300)
     plt.close()
@@ -331,12 +338,14 @@ def main():
     # -------------------------
     # Compute age at selection
     # -------------------------
+    # This step converts snapshot-level outputs into issue-level outputs
+    # by retaining one representative row per issue.
     theory_df = add_age_days(theory_df)
     pms_df = add_age_days(pms_df)
 
-    # -------------------------
-    # Deduplicate by issue_id
-    # -------------------------
+    # Save deduplicated issue-level outputs.
+    # These CSVs are useful for exploratory inspection but were NOT used directly
+    # in the thesis text.
     theory_unique = deduplicate_theory(theory_df)
     pms_unique = deduplicate_pms(pms_df)
 
@@ -345,7 +354,7 @@ def main():
     pms_unique.to_csv(os.path.join(OUT_DIR, "pms_unique_issue_outputs.csv"), index=False)
 
     # -------------------------
-    # Build summaries
+    # Build summaries used in the thesis
     # -------------------------
     severity_summary = build_severity_summary(theory_unique, pms_unique)
     effort_bin_summary = build_effort_bin_summary(theory_unique, pms_unique)
@@ -356,7 +365,7 @@ def main():
     numeric_summary.to_csv(os.path.join(OUT_DIR, "summary_tms_vs_pms.csv"), index=False)
 
     # -------------------------
-    # Plots
+    # Main thesis plots
     # -------------------------
     plot_grouped_bar(
         summary_df=severity_summary,
@@ -381,19 +390,6 @@ def main():
         label1="TMS-selected",
         label2="PMS-selected",
     )
-
-    plot_effort_boxplot(
-        theory_unique,
-        pms_unique,
-        os.path.join(OUT_DIR, "effort_boxplot_tms_vs_pms.png")
-    )
-
-    if PLOT_AGE_DISTRIBUTION:
-        plot_age_boxplot(
-            theory_unique,
-            pms_unique,
-            os.path.join(OUT_DIR, "age_boxplot_tms_vs_pms.png")
-        )
 
     # -------------------------
     # Console output
