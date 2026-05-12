@@ -14,7 +14,6 @@ def map_severity(severity_series: pd.Series) -> np.ndarray:
     Returns:
         np.ndarray: Numeric array corresponding to severity values.
     """
-    # mapping = {"blocker": 11, "high": 7, "medium": 4, "low": 2, "info": 1}
     mapping = {"blocker": 16, "high": 8, "medium": 4, "low": 2, "info": 1}
 
     return severity_series.str.lower().map(mapping).fillna(1).to_numpy()
@@ -72,11 +71,8 @@ def featurize(issues_df: pd.DataFrame, mode="theory") -> np.ndarray:
         sev = map_severity(issues_df["severity"])
         # Normalize effort estimates
         eff = normalize(issues_df["effort_minutes"])
-        # Normalize age (days since creation)
-        # age = normalize(issues_df["age_days"])
         features.append(sev.reshape(-1, 1))
         features.append(eff.reshape(-1, 1))
-        # features.append(age.reshape(-1, 1))
     else:
         # Normalize issue age (days since creation)
         age = normalize(issues_df["age_days"])
@@ -113,7 +109,9 @@ def build_dev_rank_map(issues_df: pd.DataFrame, month: pd.Timestamp) -> dict:
         (closed["closed_at"] < month_end)
         ].sort_values("closed_at")
 
-    # 将“当月关闭”的行索引映射到 1..N 的 rank（用于奖励）（注意：此时 issues_df 已 reset_index）
+    # Map the row indices of issues closed within the current month
+    # to closure ranks 1..N for reward construction.
+    # Note: at this point, issues_df has already been reset_index().
     rank_map = {
         idx: rank
         for rank, idx in enumerate(closed_in_month.index, start=1)

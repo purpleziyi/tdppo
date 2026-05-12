@@ -26,10 +26,9 @@ def load_github_issues(repo: str, max_issues: int = 2000) -> pd.DataFrame:
         r = requests.get(url, params=params)
         data = r.json()    # Convert JSON response to Python list of dicts
 
-        # if page > 1: break    # 待删！！！
 
         if not isinstance(data, list):
-            print("GitHub API error:", data)  # 打印出来调试
+            print("GitHub API error:", data)  # Print out for debugging
             break
 
         # stop if no more issues
@@ -163,7 +162,6 @@ def build_monthly_snapshots(issues_df: pd.DataFrame):
     month = start_date
 
     while month <= end_date:
-        # 本月 1 号的 backlog = 当时仍然 open 的 issues
         mask = (df["created_at"] < month) & (
                 df["closed_at"].isna() | (df["closed_at"] > month)
         )
@@ -188,7 +186,6 @@ def build_monthly_snapshots_sonar(issues_df: pd.DataFrame):
     df = issues_df.copy()
     df["created_at"] = pd.to_datetime(df["created_at"], utc=True)
 
-    # time range：最早的创建时间到最晚的创建时间
     start_date = df["created_at"].min().to_period("M").to_timestamp().tz_localize("UTC")
     end_date = df["created_at"].max().to_period("M").to_timestamp().tz_localize("UTC")
 
@@ -196,7 +193,6 @@ def build_monthly_snapshots_sonar(issues_df: pd.DataFrame):
     month = start_date
 
     while month <= end_date:
-        # backlog = 截止到该月一号之前创建的所有 issue
         mask = df["created_at"] < month
         snapshots[month] = df.loc[mask].copy()
         month = month + pd.offsets.MonthBegin(1)
